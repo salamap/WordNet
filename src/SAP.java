@@ -1,7 +1,7 @@
 
 public class SAP {
 	private final Digraph myG;     // immutable copy of client's graph 
-	private SAPInfo mySAPInfo;
+	private SAPInfo mySAPInfo;     // private class for caching and tracking SAP
 	
 	private class SAPInfo  {
 		int v = -1;
@@ -17,6 +17,7 @@ public class SAP {
 		
 		this.mySAPInfo = new SAPInfo();
 		this.myG = new Digraph(G.V());
+		// make defensive copy
 		this.copy(G);
 	}
 	
@@ -25,17 +26,12 @@ public class SAP {
 	public int length(int v, int w) {
 		if (v < 0 || v >= myG.V()) throw new IndexOutOfBoundsException();
 		if (w < 0 || w >= myG.V()) throw new IndexOutOfBoundsException();
+		//retrieve cached values
 		if (mySAPInfo.v == v && mySAPInfo.w == w) return mySAPInfo.length;
 		
-		mySAPInfo.v = v;
-		mySAPInfo.w = w;
-		mySAPInfo.ancestor = -1;
-		mySAPInfo.length = -1;
-		DeluxBFS vBFDP = new DeluxBFS(myG, v);
-		DeluxBFS wBFDP = new DeluxBFS(myG, w);	
-		SET<Integer> vAncestors = vBFDP.getAncestors();
-		SET<Integer> wAncestors = wBFDP.getAncestors();
-		setSAP(v, vAncestors, vBFDP, w, wAncestors, wBFDP);
+		// update cache otherwise
+		processVertices(v, w);
+		
 		return mySAPInfo.length;
 	}
 	
@@ -46,8 +42,8 @@ public class SAP {
 		DeluxBFS vBFDP = new DeluxBFS(myG, v);
 		DeluxBFS wBFDP = new DeluxBFS(myG, w);
 		for (int a : v) {
+			SET<Integer> aAncestors = vBFDP.getAncestors(a);
 			for (int b : w) {
-				SET<Integer> aAncestors = vBFDP.getAncestors(a);
 				SET<Integer> bAncestors = wBFDP.getAncestors(b);
 				setSAP(a, aAncestors, vBFDP, b, bAncestors, wBFDP);
 			}
@@ -61,17 +57,12 @@ public class SAP {
 	public int ancestor(int v, int w) {
 		if (v < 0 || v >= myG.V()) throw new IndexOutOfBoundsException();
 		if (w < 0 || w >= myG.V()) throw new IndexOutOfBoundsException();
+		//retrieve cached values
 		if (mySAPInfo.v == v && mySAPInfo.w == w) return mySAPInfo.ancestor;
 		
-		mySAPInfo.v = v;
-		mySAPInfo.w = w;
-		mySAPInfo.ancestor = -1;
-		mySAPInfo.length = -1;
-		DeluxBFS vBFDP = new DeluxBFS(myG, v);
-		DeluxBFS wBFDP = new DeluxBFS(myG, w);
-		SET<Integer> vAncestors = vBFDP.getAncestors();
-		SET<Integer> wAncestors = wBFDP.getAncestors();
-		setSAP(v, vAncestors, vBFDP, w, wAncestors, wBFDP);
+		// update cache otherwise
+		processVertices(v, w);
+
 		return  mySAPInfo.ancestor;
 	}
 	
@@ -82,8 +73,8 @@ public class SAP {
 		DeluxBFS vBFDP = new DeluxBFS(myG, v);
 		DeluxBFS wBFDP = new DeluxBFS(myG, w);
 		for (int a : v) {
+			SET<Integer> aAncestors = vBFDP.getAncestors(a);
 			for (int b : w) {
-				SET<Integer> aAncestors = vBFDP.getAncestors(a);
 				SET<Integer> bAncestors = wBFDP.getAncestors(b);
 				setSAP(a, aAncestors, vBFDP, b, bAncestors, wBFDP);
 			}
@@ -92,17 +83,39 @@ public class SAP {
 	}
 	
 	
+	// kick off the SAP process
+	private void processVertices (int v, int w) {
+		mySAPInfo.v = v;
+		mySAPInfo.w = w;
+		mySAPInfo.ancestor = -1;
+		mySAPInfo.length = -1;
+		// conduct BFS from vertices of interest
+		DeluxBFS vBFDP = new DeluxBFS(myG, v);
+		DeluxBFS wBFDP = new DeluxBFS(myG, w);	
+		// save the ancestors of each vertex in a set
+		SET<Integer> vAncestors = vBFDP.getAncestors();
+		SET<Integer> wAncestors = wBFDP.getAncestors();
+		
+		setSAP(v, vAncestors, vBFDP, w, wAncestors, wBFDP);
+	}
+	
+	
+	// set SAP information based on provided parameters
 	private void setSAP(int a, SET<Integer> aAncestors, DeluxBFS aPaths,
 			            int b, SET<Integer> bAncestors, DeluxBFS bPaths) {
 		
 		if (aAncestors != null && bAncestors != null) {
 			// intersection of both ancestors
 			SET<Integer> intersection = aAncestors.intersects(bAncestors);
+			// common ancestors found
 			if (intersection.size() != 0) {
 			    for (int x : intersection) {
 				    int currDist = aPaths.distTo(x) + bPaths.distTo(x);
+				    // first distance calculation to be performed for these parameters
 				    if (mySAPInfo.length == -1) {
+				    	// update the length field
 				    	mySAPInfo.length = currDist;
+				    	// update the ancestor field
 				    	mySAPInfo.ancestor = x;
 				    }
 				    else if (currDist < mySAPInfo.length) {
@@ -112,10 +125,10 @@ public class SAP {
 			    }
 		    }
 		}
+		// a has no ancestors
 		else if (aAncestors == null) {
-			// a has no ancestors
 			for (int x : bAncestors) {
-				int currDist = bPaths.distTo(x); // is this correct or special case?
+				int currDist = bPaths.distTo(x);
 			    if (mySAPInfo.length == -1) {
 			    	mySAPInfo.length = currDist;
 			    	mySAPInfo.ancestor = x;
@@ -126,10 +139,10 @@ public class SAP {
 			    }
 			}
 		}
+		// b has no ancestors
 		else {
-			// b has no ancestors
 			for (int x : aAncestors) {
-				int currDist = aPaths.distTo(x); // is this correct or special case?
+				int currDist = aPaths.distTo(x);
 			    if (mySAPInfo.length == -1) {
 			    	mySAPInfo.length = currDist;
 			    	mySAPInfo.ancestor = x;
@@ -143,8 +156,8 @@ public class SAP {
 	}
 	
 	
+	// Defensive copy 
 	private void copy(Digraph G) {
-		// Defensive copy 
 		for (int v = 0; v < G.V(); v++) {
 			for (Integer w : G.adj(v)) {
 				this.myG.addEdge(v, w);
