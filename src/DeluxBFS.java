@@ -1,11 +1,9 @@
-
 public class DeluxBFS {
     private static final int INFINITY = Integer.MAX_VALUE;
     private boolean[] marked;  // marked[v] = is there an s->v path?
     private int[] edgeTo;      // edgeTo[v] = last edge on shortest s->v path
     private int[] distTo;      // distTo[v] = length of shortest s->v path
-    private SET<Integer> ancestors;
-    private SET<Integer>[] ancestorsList;
+    
     /**
      * Computes the shortest path from <tt>s</tt> and every other vertex in graph <tt>G</tt>.
      * @param G the digraph
@@ -15,7 +13,7 @@ public class DeluxBFS {
         marked = new boolean[G.V()];
         distTo = new int[G.V()];
         edgeTo = new int[G.V()];
-        ancestors = new SET<Integer>();
+        
         for (int v = 0; v < G.V(); v++) distTo[v] = INFINITY;
         bfs(G, s);
     }
@@ -26,13 +24,13 @@ public class DeluxBFS {
      * @param G the digraph
      * @param sources the source vertices
      */
-    @SuppressWarnings("unchecked")
 	public DeluxBFS(Digraph G, Iterable<Integer> sources) {
         marked = new boolean[G.V()];
         distTo = new int[G.V()];
         edgeTo = new int[G.V()];
-        ancestorsList = (SET<Integer>[]) new Object[G.V()];
+        
         for (int v = 0; v < G.V(); v++) distTo[v] = INFINITY;
+        
         bfs(G, sources);
     }
 
@@ -44,7 +42,6 @@ public class DeluxBFS {
         q.enqueue(s);
         while (!q.isEmpty()) {
             int v = q.dequeue();
-            ancestors.add(v);
             for (int w : G.adj(v)) {
                 if (!marked[w]) {
                     edgeTo[w] = v;
@@ -66,19 +63,17 @@ public class DeluxBFS {
         }
         while (!q.isEmpty()) {
             int v = q.dequeue();
-            ancestorsList[v].add(v);
             for (int w : G.adj(v)) {
                 if (!marked[w]) {
                     edgeTo[w] = v;
                     distTo[w] = distTo[v] + 1;
                     marked[w] = true;
                     q.enqueue(w);
-                    ancestorsList[v].add(w);
                 }
             }
         }
     }
-
+	
     /**
      * Is there a directed path from the source <tt>s</tt> (or sources) to vertex <tt>v</tt>?
      * @param v the vertex
@@ -114,22 +109,7 @@ public class DeluxBFS {
         return path;
     }
     
-    /**
-     * Returns the set of ancestors of <tt>s</tt>
-     * @return the sequence of ancestors, as an Iterable
-     */
-    public SET<Integer> getAncestors() {
-    	return ancestors;
-    }
     
-    /**
-     * Returns the set of ancestors of <tt>v</tt>
-     * @param v the vertex
-     * @return the sequence of ancestors, as an Iterable
-     */
-    public SET<Integer> getAncestors(int v) {
-    	return ancestorsList[v];
-    }
     /**
      * Unit tests the <tt>BreadthFirstDirectedPaths</tt> data type.
      */
